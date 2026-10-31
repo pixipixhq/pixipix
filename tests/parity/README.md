@@ -15,16 +15,36 @@ For portable contributor checks, including authority integrity and guard tests:
 uv run pytest -m "not canonical"
 ```
 
-The `canonical` marker selects four exact-environment certification cases: the
-checkout behavior comparison, the non-skipping runtime precheck, and the installed
-direct-wheel and rebuilt-wheel comparisons. Default pytest selection still includes
+The `canonical` marker selects six exact-environment cases: the checkout
+development comparison, the non-skipping runtime precheck, two installed
+development comparisons, and two strict installed-release comparisons. The latter
+two also carry `release_certificate`. Default pytest selection still includes
 all of them. Use CPython 3.12.12 on macOS arm64 with the locked dependencies for this
 gate:
 
 ```bash
 uv sync --locked --all-groups --python 3.12.12
-uv run --no-sync pytest -m canonical
+uv run --no-sync pytest -m "canonical and not release_certificate"
 ```
+
+Development compares the recorded runtime, dependency versions, fixtures and every
+behavior/artifact expectation against the existing reference, while binding the
+observed lock hash to the actual current lock. It does not claim the historical
+release certificate. External development candidates require the verification
+checkout's HEAD and lock to match `PIXIPIX_DEVELOPMENT_SOURCE_COMMIT`, and the
+supplied source distribution must contain that same lock. Installed direct and
+rebuilt wheels run in isolated locked environments.
+
+Strict release certification uses `uv run --no-sync pytest -m release_certificate`.
+It preserves exact release source/lock identity and recorded output expectations.
+A different current lock is an error for that certificate, not a reason to skip or
+replace its expected hash. Historical v0.1.1 and v0.2.0 lock-transition tests read
+their immutable release commits; normal tests never rewrite those certificates.
+
+PR CI runs development qualification. Tag and authorized recovery CI run strict
+installed-release certification, plus the current checkout's development behavior
+check as separate verification-tooling evidence. Both paths require the hard
+canonical-runtime precheck. Publication remains gated on the release path.
 
 Run the entire parity test module in that environment with:
 

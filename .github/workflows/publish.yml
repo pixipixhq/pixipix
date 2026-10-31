@@ -184,7 +184,7 @@ jobs:
 
       - name: Test portable suite
         run: >-
-          uv run pytest
+          uv run pytest -m "not canonical"
           --deselect=tests/parity/test_parity.py::test_current_behavior_matches_explicit_v0_2_0_authority
           --deselect=tests/parity/test_parity.py::test_active_release_gate_requires_the_canonical_runtime
           --deselect='tests/release/test_smoke_distribution.py::test_installed_artifact_matches_active_release_authority[direct_wheel]'
@@ -291,6 +291,9 @@ jobs:
           uname -m
           uv run --no-sync python -c 'import platform, sys; expected = ("3.12.12", "darwin", "arm64"); actual = (platform.python_version(), sys.platform, platform.machine().lower()); assert actual == expected, f"canonical runtime mismatch: expected={expected!r} actual={actual!r}"'
 
+      - name: Record verification-tooling lock identity
+        run: shasum -a 256 uv.lock
+
       - name: Verify publish candidate shape and hashes
         shell: bash
         run: |
@@ -304,14 +307,33 @@ jobs:
           fi
           shasum -a 256 "${wheels[0]}" "${sdists[0]}"
 
-      - name: Test canonical release authority
+      - name: Qualify current development candidate
+        if: github.event_name == 'pull_request'
+        env:
+          PIXIPIX_RELEASE_CANDIDATE_DIR: ${{ runner.temp }}/release-candidate
+          PIXIPIX_DEVELOPMENT_SOURCE_COMMIT: ${{ needs.resolve.outputs.release_commit }}
+        run: >-
+          uv run pytest -q
+          tests/parity/test_parity.py::test_current_behavior_matches_development_contract
+          tests/parity/test_parity.py::test_active_release_gate_requires_the_canonical_runtime
+          'tests/release/test_smoke_distribution.py::test_installed_artifact_matches_development_contract[direct_wheel]'
+          'tests/release/test_smoke_distribution.py::test_installed_artifact_matches_development_contract[rebuilt_wheel]'
+
+      - name: Test immutable release certificate and current tooling behavior
+        if: >-
+          (github.event_name == 'push' &&
+           github.ref_type == 'tag' &&
+           startsWith(github.ref, 'refs/tags/v')) ||
+          (github.event_name == 'workflow_dispatch' &&
+           github.ref == 'refs/heads/main' &&
+           needs.resolve.outputs.recovery == 'true')
         env:
           PIXIPIX_RELEASE_CANDIDATE_DIR: ${{ runner.temp }}/release-candidate
           PIXIPIX_RELEASE_AUTHORITY_VERSION: ${{ needs.resolve.outputs.release_version }}
           PIXIPIX_RELEASE_SOURCE_COMMIT: ${{ needs.resolve.outputs.release_commit }}
         run: >-
           uv run pytest -q
-          tests/parity/test_parity.py::test_current_behavior_matches_explicit_v0_2_0_authority
+          tests/parity/test_parity.py::test_current_behavior_matches_development_contract
           tests/parity/test_parity.py::test_active_release_gate_requires_the_canonical_runtime
           'tests/release/test_smoke_distribution.py::test_installed_artifact_matches_active_release_authority[direct_wheel]'
           'tests/release/test_smoke_distribution.py::test_installed_artifact_matches_active_release_authority[rebuilt_wheel]'
