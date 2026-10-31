@@ -27,27 +27,14 @@ identically.
 
 ## See the result
 
-Pixi, the PixiPix mascot, shows the transformation from an extracted pose to an
-aligned frame:
-
-![An extracted 205 by 227 pixel Pixi pose beside its aligned 64 by 64 pixel output, enlarged four times](https://raw.githubusercontent.com/pixipixhq/pixipix/ae0e79756f09b1d119861cd8697909f8a58856f6/assets/brand/pixi-before-after.png)
-
-The before image is `pixi-stand-cube` from the **extraction stage**, not the full
-source sheet. The output is enlarged with nearest-neighbor scaling so each logical
-pixel stays visible. Checkerboards indicate transparency.
-
-The complete sheet produces thirty separate 64×64 frames:
-
-![All thirty aligned Pixi frames in six columns, enlarged two times](https://raw.githubusercontent.com/pixipixhq/pixipix/ae0e79756f09b1d119861cd8697909f8a58856f6/assets/brand/pixi-aligned-frames.png)
-
-This grid is a preview of the separate PNGs, not an exported atlas. The configured
-pipeline is:
+Pixi, the PixiPix mascot, demonstrates the complete pipeline on a multi-frame
+source sheet:
 
 ```text
 inspect → extract → scale → pixelize → align
 ```
 
-Pixi and these previews are **reserved artwork**, not Apache-licensed sample assets.
+Pixi and its derived images are **reserved artwork**, not Apache-licensed sample assets.
 See the [asset rights](https://github.com/pixipixhq/pixipix/blob/main/ASSET-LICENSES.md)
 and [showcase configuration](https://github.com/pixipixhq/pixipix/tree/main/examples/pixi-demo).
 For artwork you can reuse, try the [Apache-licensed geometric example](#try-a-reusable-example).
