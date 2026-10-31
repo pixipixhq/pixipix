@@ -11,11 +11,10 @@
 
 <p align="center"><strong>Tiny poses in. Tidy pixels out.</strong></p>
 
-PixiPix is a deterministic, local-first command-line pipeline for transforming PNG
-source sheets into isolated, consistently scaled, pixelized, and aligned RGBA frames.
-It extracts visual components, applies a shared geometric scale, converts configured
-pseudo-pixel cells into true logical pixels, and places every frame on a deterministic
-fixed-size canvas.
+PixiPix turns a PNG source sheet into separate, consistently scaled pixel-art frames.
+It extracts connected shapes, converts configured blocks of image pixels into true
+logical pixels, and aligns every frame on a fixed-size transparent canvas. It runs
+locally, with deterministic output in supported, verified environments.
 
 PixiPix is content- and source-agnostic. It does not recognize subjects, infer what a
 frame depicts, or care how a source sheet was created. Hand-drawn, rendered, scanned,
@@ -26,16 +25,32 @@ identically.
 > PixiPix is actively developed. Future releases will expand the pipeline while
 > preserving documented stable behavior.
 
-## Example
+## See the result
 
-Pixi, the official PixiPix mascot, demonstrates the complete current
-pipeline on a real multi-frame raster source:
+Pixi, the PixiPix mascot, shows the transformation from an extracted pose to an
+aligned frame:
+
+![An extracted 205 by 227 pixel Pixi pose beside its aligned 64 by 64 pixel output, enlarged four times](https://raw.githubusercontent.com/pixipixhq/pixipix/ae0e79756f09b1d119861cd8697909f8a58856f6/assets/brand/pixi-before-after.png)
+
+The before image is `pixi-stand-cube` from the **extraction stage**, not the full
+source sheet. The output is enlarged with nearest-neighbor scaling so each logical
+pixel stays visible. Checkerboards indicate transparency.
+
+The complete sheet produces thirty separate 64×64 frames:
+
+![All thirty aligned Pixi frames in six columns, enlarged two times](https://raw.githubusercontent.com/pixipixhq/pixipix/ae0e79756f09b1d119861cd8697909f8a58856f6/assets/brand/pixi-aligned-frames.png)
+
+This grid is a preview of the separate PNGs, not an exported atlas. The configured
+pipeline is:
 
 ```text
 inspect → extract → scale → pixelize → align
 ```
 
-See [`examples/pixi-demo/`](examples/pixi-demo/).
+Pixi and these previews are **reserved artwork**, not Apache-licensed sample assets.
+See the [asset rights](https://github.com/pixipixhq/pixipix/blob/main/ASSET-LICENSES.md)
+and [showcase configuration](https://github.com/pixipixhq/pixipix/tree/main/examples/pixi-demo).
+For artwork you can reuse, try the [Apache-licensed geometric example](#try-a-reusable-example).
 
 ## Requirements
 
@@ -54,11 +69,40 @@ pixipix --help
 ```
 
 For an isolated environment, create and activate a virtual environment before
-installing. See [Development](#development) for source and contributor setup.
+installing with pip. Or use [uv](https://docs.astral.sh/uv/) to install PixiPix as an
+isolated command-line tool with Python 3.12:
+
+```bash
+uv tool install --python 3.12 pixipix
+pixipix --help
+```
+
+See [Development](#development) for source and contributor setup.
+
+## Try a reusable example
+
+The [geometric example](https://github.com/pixipixhq/pixipix/tree/ae0e79756f09b1d119861cd8697909f8a58856f6/examples/geometric-demo)
+contains two tiny robots made from rectangles. Its source, configuration, and
+resulting frames are **Apache-2.0 licensed** and may be reused under that license.
+
+Download its [source.png](https://raw.githubusercontent.com/pixipixhq/pixipix/ae0e79756f09b1d119861cd8697909f8a58856f6/examples/geometric-demo/source.png)
+and [pixipix.toml](https://raw.githubusercontent.com/pixipixhq/pixipix/ae0e79756f09b1d119861cd8697909f8a58856f6/examples/geometric-demo/pixipix.toml)
+into one directory. After installing PixiPix, run these commands there:
+
+```bash
+pixipix inspect source.png --config pixipix.toml
+pixipix run source.png --config pixipix.toml --output build/geometric-demo
+```
+
+Open `build/geometric-demo/align/frames/`: `idle.png` and `signal.png` are each
+4×4 RGBA pixels. The other stage directories and their `stage.json` files let you
+inspect each step. See the example's
+[license and provenance](https://github.com/pixipixhq/pixipix/blob/ae0e79756f09b1d119861cd8697909f8a58856f6/examples/geometric-demo/README.md#license-and-provenance).
 
 ## Quick start
 
-Create `pixipix.toml`:
+For your own two-component source sheet, create `pixipix.toml` and adjust the
+settings to match your artwork:
 
 ```toml
 [project]
@@ -118,7 +162,7 @@ Inspect the source without writing files:
 pixipix inspect source.png --config pixipix.toml
 ```
 
-Execute the complete current Core pipeline and publish one inspectable run:
+Run every stage and write the results to one directory:
 
 ```bash
 pixipix run source.png \
@@ -157,11 +201,11 @@ number of configured frame names. PixiPix fails instead of guessing when they di
 pixipix run INPUT --config CONFIG --output OUTPUT [--force]
 ```
 
-Executes the authoritative current Core pipeline in the fixed order Extract → Scale →
+Executes the complete pipeline in the fixed order Extract → Scale →
 Pixelize → Align. The output root retains unchanged, inspectable `extract/`, `scale/`,
 `pixelize/`, and `align/` stage artifacts. PixiPix builds the complete run in a temporary
 sibling and publishes the requested root only after every stage succeeds. Stage warnings
-are printed once in their stored order, and failures retain the existing Core error and
+are printed once in their stored order, and failures retain the documented error and
 exit-code semantics.
 
 ### `pixipix inspect`
