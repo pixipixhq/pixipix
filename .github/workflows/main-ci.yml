@@ -1,0 +1,58 @@
+name: Main CI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Verify the latest main tip; superseded runs may be canceled.
+concurrency:
+  group: main-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify main
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_type == 'branch' &&
+      github.ref == 'refs/heads/main' &&
+      github.event.deleted == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.11.29"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Synchronize locked dependencies
+        run: uv sync --locked --all-groups --python 3.12.12
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type-check
+        run: uv run mypy src tests
+
+      - name: Test portable suite
+        run: uv run pytest -m "not canonical"
