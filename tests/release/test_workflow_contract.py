@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import os
 import re
+import subprocess
+import textwrap
 from pathlib import Path
+
+import pytest
 
 from scripts.smoke_distribution import SMOKE_STAGES
 
@@ -21,6 +26,14 @@ def _workflow_text() -> str:
 def _job(text: str, name: str) -> str:
     match = re.search(rf"(?ms)^  {re.escape(name)}:\n(?P<body>.*?)(?=^  [\w-]+:\n|\Z)", text)
     assert match is not None, f"missing workflow job {name!r}"
+    return match.group("body")
+
+
+def _step(job: str, name: str) -> str:
+    match = re.search(
+        rf"(?ms)^      - name: {re.escape(name)}\n(?P<body>.*?)(?=^      - name: |\Z)", job
+    )
+    assert match is not None, f"missing workflow step {name!r}"
     return match.group("body")
 
 
@@ -122,7 +135,7 @@ def test_pr_and_recovery_runs_preserve_portable_verification() -> None:
     assert "needs.resolve.outputs.recovery != 'true'" in build
     assert "needs.resolve.outputs.recovery == 'true'" in build
     assert "uv run mypy src\n" in build
-    assert "uv run pytest" in build
+    assert 'uv run pytest -m "not canonical"' in build
     assert "fetch-depth: 0" in build
     assert (
         "--deselect=tests/parity/test_parity.py::"
@@ -159,7 +172,7 @@ def test_canonical_release_authority_runs_on_exact_runtime() -> None:
     assert "uv python install 3.12.12" in canonical
     assert '("3.12.12", "darwin", "arm64")' in canonical
     assert "recovery verification tooling must come from the dispatched main commit" in canonical
-    assert "test_current_behavior_matches_explicit_v0_2_0_authority" in canonical
+    assert canonical.count("test_current_behavior_matches_development_contract") == 2
     assert "test_active_release_gate_requires_the_canonical_runtime" in canonical
     for artifact_name in ("direct_wheel", "rebuilt_wheel"):
         node = (
@@ -277,3 +290,82 @@ def test_recovery_and_normal_tag_push_share_one_verified_candidate() -> None:
 
 def test_distribution_smoke_uses_complete_structured_stage_contract() -> None:
     assert SMOKE_STAGES == ("inspect", "extract", "scale", "pixelize", "align")
+
+
+def test_development_and_release_qualification_routes_are_explicit_and_disjoint() -> None:
+    canonical = _job(_workflow_text(), "canonical")
+    development = _step(canonical, "Qualify current development candidate")
+    release = _step(canonical, "Test immutable release certificate and current tooling behavior")
+
+    assert "        if: github.event_name == 'pull_request'\n" in development
+    assert (
+        "        if: >-\n"
+        + textwrap.indent(
+            "(github.event_name == 'push' &&\n"
+            " github.ref_type == 'tag' &&\n"
+            " startsWith(github.ref, 'refs/tags/v')) ||\n"
+            "(github.event_name == 'workflow_dispatch' &&\n"
+            " github.ref == 'refs/heads/main' &&\n"
+            " needs.resolve.outputs.recovery == 'true')\n",
+            "          ",
+        )
+        in release
+    )
+    assert (
+        "PIXIPIX_DEVELOPMENT_SOURCE_COMMIT: ${{ needs.resolve.outputs.release_commit }}"
+        in development
+    )
+    assert "PIXIPIX_RELEASE_SOURCE_COMMIT:" not in development
+    assert "PIXIPIX_RELEASE_AUTHORITY_VERSION:" not in development
+    assert "PIXIPIX_DEVELOPMENT_SOURCE_COMMIT:" not in release
+    assert "PIXIPIX_RELEASE_SOURCE_COMMIT: ${{ needs.resolve.outputs.release_commit }}" in release
+    assert (
+        "PIXIPIX_RELEASE_AUTHORITY_VERSION: ${{ needs.resolve.outputs.release_version }}" in release
+    )
+    for step in (development, release):
+        assert "PIXIPIX_RELEASE_CANDIDATE_DIR: ${{ runner.temp }}/release-candidate" in step
+        assert "test_active_release_gate_requires_the_canonical_runtime" in step
+        assert "test_current_behavior_matches_development_contract" in step
+    for artifact in ("direct_wheel", "rebuilt_wheel"):
+        assert f"test_installed_artifact_matches_development_contract[{artifact}]" in development
+        assert f"test_installed_artifact_matches_active_release_authority[{artifact}]" in release
+    assert "test_installed_artifact_matches_active_release_authority" not in development
+    assert "test_installed_artifact_matches_development_contract" not in release
+
+
+@pytest.mark.parametrize(
+    ("event", "ref_type", "ref", "ref_name", "reason"),
+    [
+        ("unknown", "branch", "refs/heads/main", "main", "unsupported workflow event"),
+        ("push", "branch", "refs/heads/main", "main", "push events must be tags"),
+        ("workflow_dispatch", "branch", "refs/heads/other", "other", "dispatched from main"),
+        ("push", "tag", "refs/tags/invalid", "invalid", "release tag must match"),
+    ],
+)
+def test_actual_resolver_refuses_unsupported_qualification_routes(
+    tmp_path: Path, event: str, ref_type: str, ref: str, ref_name: str, reason: str
+) -> None:
+    resolver = _job(_workflow_text(), "resolve")
+    script = textwrap.dedent(resolver.split("        run: |\n", maxsplit=1)[1])
+    output = tmp_path / "outputs"
+    environment = {
+        **os.environ,
+        "GITHUB_EVENT_NAME": event,
+        "GITHUB_REF_TYPE": ref_type,
+        "GITHUB_REF": ref,
+        "GITHUB_REF_NAME": ref_name,
+        "GITHUB_OUTPUT": str(output),
+        "RUNNER_TEMP": str(tmp_path),
+        "RECOVERY_TAG": "v0.1.1",
+    }
+    result = subprocess.run(
+        ["bash", "-c", script],
+        cwd=WORKFLOW.parents[2],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert reason in result.stderr
+    assert not output.exists()

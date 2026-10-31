@@ -67,5 +67,6 @@ addopts = "-ra"
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
-  "canonical: exact-byte certification in the recorded canonical Python, dependency, and platform environment",
+  "canonical: exact-byte qualification in the recorded canonical Python, dependency, and platform environment",
+  "release_certificate: strict installed-artifact certification against an immutable release source and lock",
 ]

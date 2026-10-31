@@ -47,6 +47,7 @@ from tests.parity.support import (
     capture_behavior,
     capture_environment,
     compare_behavior,
+    compare_development_behavior,
     load_release_baseline,
     require_canonical_runtime,
 )
@@ -59,6 +60,7 @@ SMOKE_SCRIPT = PROJECT_ROOT / "scripts" / "smoke_distribution.py"
 EXTERNAL_RELEASE_CANDIDATE_ENV = "PIXIPIX_RELEASE_CANDIDATE_DIR"
 RELEASE_AUTHORITY_VERSION_ENV = "PIXIPIX_RELEASE_AUTHORITY_VERSION"
 RELEASE_SOURCE_COMMIT_ENV = "PIXIPIX_RELEASE_SOURCE_COMMIT"
+DEVELOPMENT_SOURCE_COMMIT_ENV = "PIXIPIX_DEVELOPMENT_SOURCE_COMMIT"
 DET_CONTRACT_SNIPPETS = (
     "Within a supported, verified PixiPix execution environment",
     (
@@ -219,6 +221,43 @@ def built_artifacts(tmp_path_factory: pytest.TempPathFactory) -> BuiltArtifacts:
         sdist=sdist,
         rebuilt_wheel=_single(rebuilt, "*.whl"),
     )
+
+
+def _development_candidate_lock_sha256(sdist: Path) -> str:
+    assert RELEASE_AUTHORITY_VERSION_ENV not in os.environ, (
+        "development qualification must not select a release authority"
+    )
+    assert RELEASE_SOURCE_COMMIT_ENV not in os.environ, (
+        "development qualification must not select a release source"
+    )
+    lock = (PROJECT_ROOT / "uv.lock").read_bytes()
+    source_commit = os.environ.get(DEVELOPMENT_SOURCE_COMMIT_ENV)
+    if _external_release_candidate() is not None:
+        assert source_commit is not None, (
+            f"{DEVELOPMENT_SOURCE_COMMIT_ENV} is required for an external development candidate"
+        )
+    if source_commit is not None:
+        assert re.fullmatch(r"[0-9a-f]{40}", source_commit), (
+            f"{DEVELOPMENT_SOURCE_COMMIT_ENV} must be a full lowercase commit SHA"
+        )
+        head = _run(["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT)
+        assert head.returncode == 0 and head.stdout.strip() == source_commit, (
+            "development verification checkout must match the candidate source commit"
+        )
+        source_lock = _run(["git", "show", f"{source_commit}:uv.lock"], cwd=PROJECT_ROOT)
+        assert source_lock.returncode == 0 and source_lock.stdout.encode() == lock, (
+            "development checkout lock must match the candidate source commit"
+        )
+    member_name = f"{sdist.name.removesuffix('.tar.gz')}/uv.lock"
+    with tarfile.open(sdist, "r:gz") as archive:
+        members = [member for member in archive.getmembers() if member.name == member_name]
+        assert len(members) == 1 and members[0].isfile(), (
+            "development sdist must contain exactly one regular uv.lock"
+        )
+        contents = archive.extractfile(members[0])
+        assert contents is not None
+        assert contents.read() == lock, "development sdist lock must match the checkout lock"
+    return hashlib.sha256(lock).hexdigest()
 
 
 def test_external_release_candidate_mode_is_strict(
@@ -1836,6 +1875,7 @@ def test_installed_artifact_runs_complete_pipeline(
 
 
 @pytest.mark.canonical
+@pytest.mark.release_certificate
 @pytest.mark.parametrize("artifact_name", ["direct_wheel", "rebuilt_wheel"])
 def test_installed_artifact_matches_active_release_authority(
     tmp_path: Path,
@@ -1883,6 +1923,33 @@ def test_installed_artifact_matches_active_release_authority(
         actual["uvLockSha256"] = source_lock_sha256
 
     compare_behavior(expected, actual)
+
+
+@pytest.mark.canonical
+@pytest.mark.parametrize("artifact_name", ["direct_wheel", "rebuilt_wheel"])
+def test_installed_artifact_matches_development_contract(
+    tmp_path: Path,
+    built_artifacts: BuiltArtifacts,
+    artifact_name: str,
+) -> None:
+    candidate_lock_sha256 = _development_candidate_lock_sha256(built_artifacts.sdist)
+    wheel = getattr(built_artifacts, artifact_name)
+    assert isinstance(wheel, Path)
+    installed = _locked_installed_release_environment(wheel, tmp_path / artifact_name)
+    reference = load_release_baseline()
+    actual_environment = capture_environment(
+        PARITY_PROJECT_ROOT,
+        python=installed.interpreter,
+        import_root=installed.environment,
+    )
+    require_canonical_runtime(reference.get("environment"), actual_environment)
+    actual = capture_behavior(
+        PARITY_PROJECT_ROOT,
+        tmp_path / artifact_name / "capture",
+        python=installed.interpreter,
+        import_root=installed.environment,
+    )
+    compare_development_behavior(reference, actual, candidate_lock_sha256=candidate_lock_sha256)
 
 
 def test_installed_resource_smoke_contracts_are_safe_and_exact(tmp_path: Path) -> None:

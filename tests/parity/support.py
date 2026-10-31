@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -656,6 +657,20 @@ def _release_field_classification(authority: ReleaseAuthority) -> dict[str, list
     if authority is V0_2_0_AUTHORITY:
         return V0_2_0_RELEASE_FIELD_CLASSIFICATION
     return RELEASE_FIELD_CLASSIFICATION
+
+
+def compare_development_behavior(
+    reference: dict[str, object],
+    actual: dict[str, object],
+    *,
+    candidate_lock_sha256: str,
+) -> None:
+    """Check reference behavior under the actual candidate lock, not a release certificate."""
+    if re.fullmatch(r"[0-9a-f]{64}", candidate_lock_sha256) is None:
+        raise ParityError("development candidate lock identity must be a lowercase SHA-256")
+    expected = {field: reference[field] for field in ("environment", "fixtureSha256", "cases")}
+    expected["uvLockSha256"] = candidate_lock_sha256
+    compare_behavior(expected, actual)
 
 
 def compare_behavior(expected: dict[str, object], actual: dict[str, object]) -> None:

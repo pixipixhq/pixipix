@@ -34,6 +34,7 @@ from tests.parity.support import (
     capture_behavior,
     capture_environment,
     compare_behavior,
+    compare_development_behavior,
     load_baseline,
     load_release_baseline,
     normalize_pixipix_version,
@@ -214,7 +215,7 @@ def _require_canonical_runtime(
 
 
 @pytest.mark.canonical
-def test_current_behavior_matches_explicit_v0_2_0_authority(tmp_path: Path) -> None:
+def test_current_behavior_matches_development_contract(tmp_path: Path) -> None:
     expected = load_release_baseline()
     historical = load_release_baseline(authority=V0_1_1_AUTHORITY)
     _require_canonical_runtime(
@@ -225,11 +226,12 @@ def test_current_behavior_matches_explicit_v0_2_0_authority(tmp_path: Path) -> N
     historical_before = sha256_bytes(V0_1_1_AUTHORITY.path.read_bytes())
     release_before = sha256_bytes(RELEASE_BASELINE_PATH.read_bytes())
     repository_before = _repository_state()
+    candidate_lock_sha256 = sha256_bytes((PROJECT_ROOT / "uv.lock").read_bytes())
     execution_root = tmp_path / "execution"
 
     actual = capture_behavior(PROJECT_ROOT, execution_root)
 
-    compare_behavior(expected, actual)
+    compare_development_behavior(expected, actual, candidate_lock_sha256=candidate_lock_sha256)
     _assert_stage_artifacts_are_version_only(
         execution_root,
         historical,
@@ -444,13 +446,19 @@ def test_v0_1_1_lock_transition_changes_only_root_version() -> None:
     )
 
 
-def test_release_candidate_lock_transition_changes_only_root_version() -> None:
+def test_v0_2_0_lock_transition_changes_only_root_version() -> None:
     _assert_lock_transition_changes_only_root_version(
         authority=V0_2_0_AUTHORITY,
         historical_authority=V0_1_1_AUTHORITY,
         old_version="0.1.1",
         new_version="0.2.0",
-        current=(PROJECT_ROOT / "uv.lock").read_bytes(),
+        current=subprocess.run(
+            ["git", "show", "3a3c6b448448e1a2eb59fd0d128347bba49a8566:uv.lock"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            check=True,
+            timeout=30,
+        ).stdout,
     )
 
 
@@ -504,6 +512,46 @@ def test_release_authority_rejects_behavioral_and_identity_mutations() -> None:
     for attack in attacks.values():
         with pytest.raises(ParityError):
             compare_behavior(expected, attack)
+        with pytest.raises(ParityError):
+            compare_development_behavior(
+                expected, attack, candidate_lock_sha256=cast(str, expected["uvLockSha256"])
+            )
+
+
+def test_development_comparison_binds_actual_lock_without_changing_reference() -> None:
+    reference = load_release_baseline()
+    reference_before = copy.deepcopy(reference)
+    actual = copy.deepcopy(reference)
+    candidate_lock_sha256 = sha256_bytes(b"independently captured current candidate lock")
+    actual["uvLockSha256"] = candidate_lock_sha256
+    actual_before = copy.deepcopy(actual)
+
+    compare_development_behavior(reference, actual, candidate_lock_sha256=candidate_lock_sha256)
+
+    assert actual == actual_before
+    assert reference == reference_before
+    with pytest.raises(ParityError, match="uvLockSha256"):
+        compare_behavior(reference, actual)
+    with pytest.raises(ParityError, match="uvLockSha256"):
+        compare_development_behavior(reference, actual, candidate_lock_sha256="0" * 64)
+
+
+@pytest.mark.parametrize("identity", ["", "abc", "A" * 64, "0" * 63, "0" * 65])
+def test_development_comparison_rejects_malformed_lock_identity(identity: str) -> None:
+    reference = load_release_baseline()
+    with pytest.raises(ParityError, match="lowercase SHA-256"):
+        compare_development_behavior(reference, reference, candidate_lock_sha256=identity)
+
+
+@pytest.mark.parametrize("field", ["environment", "fixtureSha256"])
+def test_development_comparison_keeps_reference_environment_and_fixtures(field: str) -> None:
+    reference = load_release_baseline()
+    actual = copy.deepcopy(reference)
+    actual[field] = {"unexpected": "drift"}
+    with pytest.raises(ParityError, match=field):
+        compare_development_behavior(
+            reference, actual, candidate_lock_sha256=cast(str, reference["uvLockSha256"])
+        )
 
 
 @pytest.mark.parametrize("version", [PREVIOUS_RELEASE_VERSION, "0.2.1"])
@@ -628,7 +676,7 @@ def test_noncanonical_runtime_skips_before_behavior_capture(
 
     monkeypatch.setattr("tests.parity.test_parity.capture_behavior", fail_capture)
     with pytest.raises(pytest.skip.Exception, match="linux-x86_64"):
-        test_current_behavior_matches_explicit_v0_2_0_authority(tmp_path)
+        test_current_behavior_matches_development_contract(tmp_path)
 
 
 def test_baseline_cases_capture_complete_ordered_contracts() -> None:
