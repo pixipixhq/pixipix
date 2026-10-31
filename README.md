@@ -39,28 +39,22 @@ See [`examples/pixi-demo/`](examples/pixi-demo/).
 
 ## Requirements
 
-- Python 3.12
-- [uv](https://docs.astral.sh/uv/)
+- Python 3.12 (Python 3.13 and newer are not currently supported)
 - PNG source images
 
 PixiPix performs no network requests, telemetry, cloud uploads, or AI inference.
 
 ## Install
 
-Clone the repository and create the locked environment:
+Install from [PyPI](https://pypi.org/project/pixipix/) in a Python 3.12 environment:
 
 ```bash
-uv sync
-uv run pixipix --help
-```
-
-To build an installable wheel:
-
-```bash
-uv build
-uv tool install dist/pixipix-0.2.0-py3-none-any.whl
+pip install pixipix
 pixipix --help
 ```
+
+For an isolated environment, create and activate a virtual environment before
+installing. See [Development](#development) for source and contributor setup.
 
 ## Quick start
 
@@ -121,13 +115,13 @@ dy = -1
 Inspect the source without writing files:
 
 ```bash
-uv run pixipix inspect source.png --config pixipix.toml
+pixipix inspect source.png --config pixipix.toml
 ```
 
 Execute the complete current Core pipeline and publish one inspectable run:
 
 ```bash
-uv run pixipix run source.png \
+pixipix run source.png \
   --config pixipix.toml \
   --output build/run
 ```
@@ -135,19 +129,19 @@ uv run pixipix run source.png \
 The individual stage commands remain supported when a stage-by-stage workflow is useful:
 
 ```bash
-uv run pixipix extract source.png \
+pixipix extract source.png \
   --config pixipix.toml \
   --output build/extracted
 
-uv run pixipix scale build/extracted \
+pixipix scale build/extracted \
   --config pixipix.toml \
   --output build/scaled
 
-uv run pixipix pixelize build/scaled \
+pixipix pixelize build/scaled \
   --config pixipix.toml \
   --output build/pixelized
 
-uv run pixipix align build/pixelized \
+pixipix align build/pixelized \
   --config pixipix.toml \
   --output build/aligned
 ```
@@ -594,6 +588,27 @@ Expected domain failures do not print tracebacks.
 - no caching, resume, concurrency, stage skipping, or configurable workflow graph
 
 ## Development
+
+Source development uses [uv](https://docs.astral.sh/uv/) with Python 3.12. Clone the
+repository and create the locked environment:
+
+```bash
+git clone https://github.com/pixipixhq/pixipix.git
+cd pixipix
+uv sync --locked --all-groups
+uv run pixipix --help
+```
+
+When running the examples from this checkout, use `uv run pixipix` in place of
+`pixipix`.
+
+To build and install a local wheel:
+
+```bash
+uv build
+uv tool install dist/pixipix-0.2.0-py3-none-any.whl
+pixipix --help
+```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor setup, project conventions,
 fixture requirements, and the full verification workflow.
