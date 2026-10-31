@@ -3,6 +3,9 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/pixipixhq/pixipix/actions/workflows/main-ci.yml?query=branch%3Amain">
+    <img src="https://github.com/pixipixhq/pixipix/actions/workflows/main-ci.yml/badge.svg?branch=main&amp;event=push" alt="Main CI">
+  </a>
   <img src="https://img.shields.io/pypi/v/pixipix.svg" alt="PyPI version">
   <img src="https://img.shields.io/badge/python-3.12-18181b" alt="Python 3.12">
   <img src="https://img.shields.io/github/stars/pixipixhq/pixipix?style=social" alt="GitHub stars">
