@@ -1835,6 +1835,7 @@ def test_installed_artifact_runs_complete_pipeline(
     assert "distribution smoke test passed for pixipix" in result.stdout
 
 
+@pytest.mark.canonical
 @pytest.mark.parametrize("artifact_name", ["direct_wheel", "rebuilt_wheel"])
 def test_installed_artifact_matches_active_release_authority(
     tmp_path: Path,

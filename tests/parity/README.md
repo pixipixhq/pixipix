@@ -9,7 +9,24 @@ results. Artifact entries contain relative paths, byte lengths, and SHA-256
 digests. Stage-tree hashes are derived from each sorted relative path encoded as
 UTF-8, one NUL byte, and the unmodified file bytes.
 
-Run the verifier with:
+For portable contributor checks, including authority integrity and guard tests:
+
+```bash
+uv run pytest -m "not canonical"
+```
+
+The `canonical` marker selects four exact-environment certification cases: the
+checkout behavior comparison, the non-skipping runtime precheck, and the installed
+direct-wheel and rebuilt-wheel comparisons. Default pytest selection still includes
+all of them. Use CPython 3.12.12 on macOS arm64 with the locked dependencies for this
+gate:
+
+```bash
+uv sync --locked --all-groups --python 3.12.12
+uv run --no-sync pytest -m canonical
+```
+
+Run the entire parity test module in that environment with:
 
 ```bash
 uv run python -B -m pytest tests/parity/test_parity.py -p no:cacheprovider
