@@ -19,8 +19,9 @@ This example runs the complete current pipeline:
 inspect → extract → scale → pixelize → align
 ```
 
-The main [README showcase](../../README.md#see-the-result) displays the source and
-aligned-output previews. Pixi is reserved artwork; for a reusable Apache-licensed
+The [preview assets](../../assets/brand/) are retained for reference; see
+[Reproduce the README previews](#reproduce-the-readme-previews) to regenerate them.
+Pixi is reserved artwork; for a reusable Apache-licensed
 sample, use the [geometric example](../geometric-demo/).
 
 ## What this example demonstrates
