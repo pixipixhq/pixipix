@@ -71,19 +71,47 @@ permitted use, and whether it may be included in package distributions.
 
 ## Verification
 
-Run the complete local gate before requesting review:
+Run the portable contributor checks before requesting review:
 
 ```bash
 uv sync --locked --all-groups
 uv run ruff format --check .
 uv run ruff check .
 uv run mypy src tests
-uv run pytest
+uv run pytest -m "not canonical"
 uv build
 ```
 
-Use `uv run ruff format .` to apply formatting. Targeted tests are useful while
-developing, but they do not replace the full suite.
+This selection includes unit, integration, architecture, packaging, and portable
+parity-guard tests. It excludes only the four exact-environment certification cases
+marked `canonical`, matching the portable CI selection. Use a full-history clone:
+the historical authority tests read immutable commits with `git show`.
+
+Use `uv run ruff format .` to apply formatting. For a shorter feedback loop while
+developing:
+
+```bash
+uv run pytest tests/unit tests/integration
+```
+
+Targeted tests do not replace the portable checks before review. Platform-specific
+cases report explicit skips where their filesystem behavior is unavailable.
+
+Exact-byte certification is a separate gate. The current reference environment is
+CPython 3.12.12 on macOS arm64, with the dependency versions in `uv.lock`. In that
+environment, run the full suite, including canonical checks:
+
+```bash
+uv sync --locked --all-groups --python 3.12.12
+uv run --no-sync pytest
+```
+
+To run only the certification cases there, use
+`uv run --no-sync pytest -m canonical`. Plain `pytest` still selects every test;
+the hard canonical-runtime precheck intentionally fails outside the reference
+environment. Portable success does not establish byte parity or release eligibility.
+See [the parity contract](tests/parity/README.md) for the historical authorities and
+non-skipping release gates.
 
 When package or release infrastructure changes, add focused release-script or
 workflow-contract tests and coordinate the verification plan with the maintainer.

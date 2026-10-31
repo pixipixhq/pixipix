@@ -213,6 +213,7 @@ def _require_canonical_runtime(
         pytest.skip(mismatch)
 
 
+@pytest.mark.canonical
 def test_current_behavior_matches_explicit_v0_2_0_authority(tmp_path: Path) -> None:
     expected = load_release_baseline()
     historical = load_release_baseline(authority=V0_1_1_AUTHORITY)
@@ -242,6 +243,7 @@ def test_current_behavior_matches_explicit_v0_2_0_authority(tmp_path: Path) -> N
     assert _repository_state() == repository_before
 
 
+@pytest.mark.canonical
 def test_active_release_gate_requires_the_canonical_runtime() -> None:
     expected = load_release_baseline()
 

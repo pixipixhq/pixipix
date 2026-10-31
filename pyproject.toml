@@ -66,3 +66,6 @@ ignore_missing_imports = true
 addopts = "-ra"
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+  "canonical: exact-byte certification in the recorded canonical Python, dependency, and platform environment",
+]
