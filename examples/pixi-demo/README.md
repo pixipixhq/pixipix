@@ -19,8 +19,9 @@ This example runs the complete current pipeline:
 inspect → extract → scale → pixelize → align
 ```
 
-> **Preview images:** Source-sheet and aligned-output previews will be added soon. The
-> example is already runnable using the commands below.
+The main [README showcase](../../README.md#see-the-result) displays the source and
+aligned-output previews. Pixi is reserved artwork; for a reusable Apache-licensed
+sample, use the [geometric example](../geometric-demo/).
 
 ## What this example demonstrates
 
@@ -219,6 +220,28 @@ Generated output belongs under the ignored `build/` directory and must not be co
 
 Generated frames contain the Pixi artwork and remain subject to the
 [authoritative asset rights statement](../../ASSET-LICENSES.md).
+
+### Reproduce the README previews
+
+After the complete-demo run above, compose the display images with Pillow:
+
+```bash
+uv run python -I scripts/make_previews.py \
+  build/pixi-demo/run assets/brand
+```
+
+This writes `pixi-before-after.png` and `pixi-aligned-frames.png` under
+`assets/brand/`. The before image is the extracted `pixi-stand-cube` pose
+(205×227 image pixels), not the whole source sheet. Its aligned 64×64 output is
+shown at 4× nearest-neighbor scale. The second image shows all thirty aligned
+frames at 2×, in configured reading order, on a transparency checkerboard.
+The montage is a documentation preview, not an atlas exported by PixiPix.
+Both previews retain the reserved Pixi rights.
+
+The script uses installed Inter fonts when available and otherwise falls back to
+Pillow's built-in font (Pillow 10.1 or newer). Font choice changes label appearance;
+the fallback uses `x` for multiplication signs. It does not change the displayed
+frame pixels.
 
 ## What to look at afterward
 
