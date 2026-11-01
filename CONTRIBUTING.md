@@ -27,7 +27,10 @@ form is unavailable, contact the maintainer through GitHub before sharing detail
 
 ## Development setup
 
-PixiPix requires Python 3.12 and uses `uv` for its locked environment.
+The current source supports standard CPython 3.12, 3.13, and 3.14 and uses `uv`
+for its locked environment. `.python-version` defaults to 3.12; exact-byte
+qualification uses the reference runtime described below. The published 0.2.0
+package still requires Python 3.12 until a new release includes the support change.
 
 ```bash
 git clone https://github.com/YOUR-USERNAME/pixipix.git
@@ -96,6 +99,20 @@ uv run pytest tests/unit tests/integration
 
 Targeted tests do not replace the portable checks before review. Platform-specific
 cases report explicit skips where their filesystem behavior is unavailable.
+
+For ordinary compatibility checks on a newer supported interpreter, select it
+explicitly for setup and every command (substitute `3.13` for `3.14` as needed):
+
+```bash
+uv sync --locked --all-groups --python 3.14
+uv run --python 3.14 pytest -m "not canonical"
+```
+
+The support expansion was locally qualified on macOS arm64 with CPython 3.12.12,
+3.13.0, and 3.14.3 using the locked dependencies, including installed wheel and
+source-distribution smoke tests. Hosted CI remains on Python 3.12.12. This is not
+qualification of free-threaded Python, other Python implementations, every
+dependency version, or byte equality across runtimes and operating systems.
 
 Exact-byte qualification is a separate gate. The current reference environment is
 CPython 3.12.12 on macOS arm64, with the dependency versions in `uv.lock`. In that
