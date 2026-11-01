@@ -7,7 +7,7 @@
     <img src="https://github.com/pixipixhq/pixipix/actions/workflows/main-ci.yml/badge.svg?branch=main&amp;event=push" alt="Main CI">
   </a>
   <img src="https://img.shields.io/pypi/v/pixipix.svg" alt="PyPI version">
-  <img src="https://img.shields.io/badge/python-3.12-18181b" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/python%20%28source%29-3.12%20to%203.14-18181b" alt="Source supports Python 3.12 to 3.14">
   <img src="https://img.shields.io/github/stars/pixipixhq/pixipix?style=social" alt="GitHub stars">
   <img src="https://img.shields.io/badge/license-Apache%202.0-64748b" alt="Apache 2.0 license">
 </p>
@@ -44,14 +44,18 @@ For artwork you can reuse, try the [Apache-licensed geometric example](#try-a-re
 
 ## Requirements
 
-- Python 3.12 (Python 3.13 and newer are not currently supported)
+- CPython 3.12–3.14 for the current source checkout
+- Python 3.12 for the published PixiPix 0.2.0 package
 - PNG source images
 
 PixiPix performs no network requests, telemetry, cloud uploads, or AI inference.
 
 ## Install
 
-Install from [PyPI](https://pypi.org/project/pixipix/) in a Python 3.12 environment:
+The published [PyPI package](https://pypi.org/project/pixipix/) (0.2.0) requires
+Python 3.12. Support for 3.13 and 3.14 is available from the
+[source checkout](#development) pending a new release. Install the published package
+in a Python 3.12 environment:
 
 ```bash
 pip install pixipix
@@ -584,6 +588,11 @@ Python, dependency, and platform environment in which this byte-level contract i
 verified. Cross-platform byte equality is not claimed unless it is separately
 established by an explicit parity authority.
 
+Ordinary CPython 3.13/3.14 support does not extend byte-identical certification.
+The exact-byte reference remains CPython 3.12.12 on macOS arm64 with the recorded
+dependency versions. Portable tests check functional behavior on other runtimes;
+they do not certify identical bytes across Python versions or operating systems.
+
 Concretely:
 
 - component discovery, ordering, and frame assignment are fully deterministic
@@ -623,8 +632,9 @@ Expected domain failures do not print tracebacks.
 
 ## Development
 
-Source development uses [uv](https://docs.astral.sh/uv/) with Python 3.12. Clone the
-repository and create the locked environment:
+The current source supports standard CPython 3.12, 3.13, and 3.14.
+[uv](https://docs.astral.sh/uv/) defaults to Python 3.12 from `.python-version`.
+Clone the repository and create the locked environment:
 
 ```bash
 git clone https://github.com/pixipixhq/pixipix.git
@@ -633,8 +643,16 @@ uv sync --locked --all-groups
 uv run pixipix --help
 ```
 
+To use Python 3.14 (or substitute `3.13`), select it explicitly for both setup and
+commands:
+
+```bash
+uv sync --locked --all-groups --python 3.14
+uv run --python 3.14 pixipix --help
+```
+
 When running the examples from this checkout, use `uv run pixipix` in place of
-`pixipix`.
+`pixipix`, adding `--python 3.14` after `uv run` when selecting that interpreter.
 
 To build and install a local wheel:
 

@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Deterministic sprite sheet pipeline: extract, scale, pixelize, and align raster art into production-ready RGBA frames."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.15"
 authors = [{ name = "Saraeloop" }]
 keywords = ["sprites", "pixel-art", "image-processing", "cli"]
 classifiers = [
@@ -12,6 +12,8 @@ classifiers = [
   "Environment :: Console",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "numpy>=2.2,<3",
